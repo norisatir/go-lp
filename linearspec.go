@@ -17,11 +17,11 @@ func (self *ConstraintList) RemoveItem(c *Constraint) bool {
 }
 
 func (self *ConstraintList) RemoveItemAt(i int) bool {
-    if i >= len(*self) {
-        return false
-    }
-    *self = append((*self)[:i], (*self)[i+1:]...)
-    return true
+	if i >= len(*self) {
+		return false
+	}
+	*self = append((*self)[:i], (*self)[i+1:]...)
+	return true
 }
 
 func (self ConstraintList) IndexOf(c *Constraint) int {
