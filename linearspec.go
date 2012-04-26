@@ -16,6 +16,14 @@ func (self *ConstraintList) RemoveItem(c *Constraint) bool {
 	return false
 }
 
+func (self *ConstraintList) RemoveItemAt(i int) bool {
+    if i >= len(*self) {
+        return false
+    }
+    *self = append((*self)[:i], (*self)[i+1:]...)
+    return true
+}
+
 func (self ConstraintList) IndexOf(c *Constraint) int {
 	for i, c1 := range self {
 		if c1 == c {
