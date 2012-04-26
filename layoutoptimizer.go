@@ -337,6 +337,62 @@ func (self *LayoutOptimizer) solve(values []float64) bool {
 }
 
 func (self *LayoutOptimizer) solveSubProblem(d []float64, am int, p []float64) bool {
+	// We have to solve the QP subproblem:
+	//   min_p 1/2p^TGp + d^Tp
+	//   s.t. a_i^Tp = 0
+	//   with a_i \in activeConstraints
+	//
+	// We use the null space method, i.e. we find matrices Y and Z, such that
+	// AZ = 0 and [Y Z] is regular. Then with
+	//   p = Yp_Y + Zp_z
+	// we get
+	//   p_Y = 0
+	// and
+	//  (Z^TGZ)p_Z = -(Z^TYp_Y + Z^Tg) = -Z^Td
+	// which is a linear equation system, which we can solve.
+
+    an := self.variableCount
+
+    // we get Y and Z by QR decomposition of A^T
+    tempD := make([]float64, am)
+    Q := self.q
+    transposeMatrix(self.activeMatrix, self.temp1, am, an)
+    success := qrDecomposition(self.temp1, an, am, tempD, Q)
+    if !success {
+        return false
+    }
+
+    // Z is the (1, m + 1) minor of Q
+    zm := an
+    zn := an - am
+
+    Z := make([][]float64, zm)
+    for i := 0; i < zm; i++ {
+        Z[i] = Q[i][am:]
+    }
+
+    // solve (Z^TGZ)p_Z = -Z^Td
+
+    // Z^T
+    transposeMatrix(Z, self.zTrans, zm, zn)
+    // rhs: -Z^T * d
+    pz := make([]float64, zm)
+    multiplyMatrixVector(self.zTrans, d, zn, zm, pz)
+    negateVector(pz, zn)
+
+    // self.Temp2 = self.zTrans * G * Z
+    multiplyMatrices(self.g, Z, self.temp1, zm, self.variableCount, zn)
+    multiplyMatrices(self.zTrans, self.temp1, self.temp2, zn, zm, zn)
+
+    success = solve(self.temp2, zn, pz)
+    if !success {
+        return false
+    }
+
+    // p = Z * pz
+    multiplyMatrixVector(Z, pz, zm, zn, p)
+
+    return true
 }
 
 /*	Solve solves the quadratic program (QP) given by the constraints added via
@@ -362,4 +418,7 @@ func (self *LayoutOptimizer) Solve(values []float64) (success bool) {
 }
 
 func (self *LayoutOptimizer) setResult(x, values []float64) {
+    for i := 0; i < self.variableCount; i++ {
+        values[i] = x[i]
+    }
 }
