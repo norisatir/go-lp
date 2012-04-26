@@ -10,6 +10,27 @@ func fuzzyEquals(a, b float64) bool {
     return math.Abs(a-b) < EqualsEpsilon
 }
 
+func isZero(x []float64, n int) bool {
+    for i := 0; i < n; i++ {
+        if fuzzyEquals(x[i], 0) {
+            return false
+        }
+    }
+    return true
+}
+
+func addVectors(x, y []float64, n int) {
+    for i := 0; i < n; i++ {
+        x[i] += y[i]
+    }
+}
+
+func addVectorsScaled(x, y []float64, scalar float64, n int) {
+    for i := 0; i < n; i++ {
+        x[i] += y[i] * scalar
+    }
+}
+
 func initMatrixSlice(m, n int) (A [][]float64) {
     A = make([][]float64, m)
     values := make([]float64, m*n)
@@ -20,12 +41,17 @@ func initMatrixSlice(m, n int) (A [][]float64) {
     return
 }
 
+// negateVector
+func negateVector(x []float64, n int) {
+    for i := 0; i < n; i++ {
+        x[i] = -x[i]
+    }
+}
 
 // multiplyMatrixVector multiplies matrix with vector
 //         y = Ax
-func multiplyMatrixVector(A [][]float64, vec []float64, m,n int) (y []float64) {
+func multiplyMatrixVector(A [][]float64, vec []float64, m, n int, y []float64) {
     sum := 0.0
-    y = make([]float64, m)
     for i := 0; i < m; i++ {
         for k := 0; k < n; k++ {
             sum = sum + A[i][k] * vec[k]
@@ -37,10 +63,9 @@ func multiplyMatrixVector(A [][]float64, vec []float64, m,n int) (y []float64) {
     return
 }
 
-func multiplyMatrices(A, B [][]float64, m, n, l int) (C [][]float64) {
+func multiplyMatrices(A, B, C [][]float64, m, n, l int) {
     sum := 0.0
 
-    C = initMatrixSlice(m, l)
     for i := 0; i < m; i++ {
         for j := 0; j < l; j++ {
             for k := 0; k < n; k++ {
@@ -53,15 +78,12 @@ func multiplyMatrices(A, B [][]float64, m, n, l int) (C [][]float64) {
     return
 }
 
-func transposeMatrix(A [][]float64, m, n int) (B [][]float64) {
-    B = initMatrixSlice(n, m)
-    
+func transposeMatrix(A, B [][]float64, m, n int) {
     for i := 0; i < m; i++ {
         for k := 0; k < n; k++ {
             B[k][i] = A[i][k]
         }
     }
-    return
 }
 
 func zeroMatrix(A [][]float64, m, n int) {
@@ -72,9 +94,7 @@ func zeroMatrix(A [][]float64, m, n int) {
     }
 }
 
-func copyMatrix(A [][]float64, m, n int) (B [][]float64) {
-    B = initMatrixSlice(m, n)
-
+func copyMatrix(A,B [][]float64, m, n int) {
     for i := 0; i < m; i++ {
         for k := 0; k < n; k++ {
             B[i][k] = A[i][k]
@@ -116,9 +136,7 @@ func multiplyOptimizationMatrixMatrix(A [][]float64, m, n int) (B [][]float64) {
     return
 }
 
-func solve(a [][]float64, n int) (bool, []float64) {
-    b := make([]float64, n)
-
+func solve(a [][]float64, n int, b []float64) bool {
     // index slice for row permutation
     indices := make([]int, n)
     for i := 0; i < n; i++ {
@@ -140,7 +158,7 @@ func solve(a [][]float64, n int) (bool, []float64) {
         }
 
         if fuzzyEquals(pivotValue, 0) {
-            return false, nil
+            return false
         }
 
         if pivot != i {
@@ -169,21 +187,19 @@ func solve(a [][]float64, n int) (bool, []float64) {
         }
         
         if fuzzyEquals(a[index][i], 0) {
-            return false, nil
+            return false
         }
         b[i] = sum / a[index][i]
     }
-    return true, b
+    return true
 }
 
-func computeDependencies(a [][]float64, m, n int) (int, []bool) {
+func computeDependencies(a [][]float64, m, n int, independent []bool) (int) {
     // index array for row permutation
     indices := make([]int, m)
     for i := 0; i < m; i++ {
         indices[i] = i
     }
-
-    independent := make([]bool, m)
 
     // forward elimination
     iterations := m
@@ -240,14 +256,14 @@ func computeDependencies(a [][]float64, m, n int) (int, []bool) {
     for j := i; j < m; j++ {
         independent[indices[j]] = false
     }
-    return i, independent
+    return i
 }
 
-func removeLinearyDependentRows(A [][]float64, m, n int) int {
+func removeLinearyDependentRows(A, temp [][]float64, independentRows []bool, m, n int) int {
     // copy to temp
-    temp := copyMatrix(A, m, n)
+    copyMatrix(A, temp, m, n)
 
-    count, independentRows := computeDependencies(temp, m, n)
+    count := computeDependencies(temp, m, n, independentRows)
     if count == m {
         return count
     }
