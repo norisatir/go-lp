@@ -53,5 +53,19 @@ type SolverLike interface {
 	MaxSize(width, height *Variable) Size
 }
 
+func max(a, b int) int {
+    if a > b {
+        return a
+    }
+    return b
+}
+
+func min(a, b int) int {
+    if a < b {
+        return a
+    }
+    return b
+}
+
 type ActiveSolver struct {
 }
