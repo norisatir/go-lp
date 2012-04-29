@@ -33,7 +33,7 @@ const (
 )
 
 type Size struct {
-	W, H int
+	W, H float64
 }
 
 type SolverLike interface {
@@ -65,7 +65,4 @@ func min(a, b int) int {
 		return a
 	}
 	return b
-}
-
-type ActiveSolver struct {
 }

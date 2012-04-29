@@ -1,9 +1,19 @@
 package lp
 
+import "fmt"
+
 type ConstraintList []*Constraint
 
 func (self *ConstraintList) AddItem(c *Constraint) {
 	*self = append(*self, c)
+}
+
+func (self *ConstraintList) AddItemAt(c *Constraint, index int) {
+	*self = append(*self, nil)
+	oldConstraint := c
+	for i := index; i < len(*self); i++ {
+		oldConstraint, (*self)[i] = (*self)[i], oldConstraint
+	}
 }
 
 func (self *ConstraintList) RemoveItem(c *Constraint) bool {
@@ -31,6 +41,13 @@ func (self ConstraintList) IndexOf(c *Constraint) int {
 		}
 	}
 	return -1
+}
+
+func (self ConstraintList) GetAt(index int) *Constraint {
+	if index >= len(self) {
+		return nil
+	}
+	return self[index]
 }
 
 type VariableList []*Variable
@@ -71,7 +88,8 @@ func NewLinearSpec() *LinearSpec {
 	ls := &LinearSpec{}
 	ls.result = ResultError
 	ls.solvingTime = 0
-	// TODO: new activeSolver
+	ls.solver = NewActiveSetSolver(ls)
+
 	return ls
 }
 
@@ -311,4 +329,39 @@ func (self *LinearSpec) addConstraint(leftSide SummandList, opType int,
 		return nil
 	}
 	return c
+}
+
+func (self *LinearSpec) String() string {
+	s := ""
+	for i := 0; i < len(self.variables); i++ {
+		variable := self.variables[i]
+		s = s + fmt.Sprintf("%v=%v ", variable.String(), variable.Value())
+	}
+	s = s + "\n"
+	for i, c := range self.constraints {
+		s = s + fmt.Sprintf("%v: %v\n", i, c.String())
+	}
+
+	s = s + "Result="
+	switch self.Result() {
+	case ResultError:
+		s = s + "Error"
+	case ResultOptimal:
+		s = s + "Optimal"
+	case ResultSubOptimal:
+		s = s + "SubOptimal"
+	case ResultInfeasible:
+		s = s + "Infeasible"
+	case ResultUnbounded:
+		s = s + "Unbounded"
+	case ResultDegenerate:
+		s = s + "Degenerate"
+	case ResultNumFailure:
+		s = s + "NumFailure"
+	default:
+		s = s + string(self.Result())
+	}
+
+	return s
+
 }
