@@ -1,6 +1,7 @@
 package lp
 
 import "math"
+import "strconv"
 
 // Variable struct contains minimum and maximum values
 type Variable struct {
@@ -13,6 +14,7 @@ type Variable struct {
 func newVariable(ls *LinearSpec) *Variable {
 	v := &Variable{}
 	v.ls = ls
+	v.label = ""
 	v.value = math.NaN()
 	v.min = -20000
 	v.max = 20000
@@ -96,11 +98,11 @@ func (self *Variable) String() string {
 			resStr = resStr + " (invalid)"
 		}
 	} else {
-		resStr = resStr + " Variable "
+		resStr = resStr + " Variable"
 		if !self.isValid {
 			resStr = resStr + "(invalid)"
 		} else {
-			resStr = resStr + string(self.Index())
+			resStr = resStr + strconv.Itoa(self.Index())
 		}
 	}
 

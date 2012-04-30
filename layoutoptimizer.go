@@ -4,7 +4,7 @@ import "errors"
 
 type LayoutOptimizer struct {
 	variableCount int
-	constraints   ConstraintList
+	constraints   *ConstraintList
 
 	temp1            [][]float64
 	temp2            [][]float64
@@ -17,16 +17,16 @@ type LayoutOptimizer struct {
 	desired          []float64
 }
 
-func NewLayoutOptimizer(list ConstraintList, variableCount int) *LayoutOptimizer {
+func NewLayoutOptimizer(list *ConstraintList, variableCount int) *LayoutOptimizer {
 	lo := &LayoutOptimizer{}
 	lo.SetConstraints(list, variableCount)
 
 	return lo
 }
 
-func (self *LayoutOptimizer) SetConstraints(list ConstraintList, variableCount int) bool {
+func (self *LayoutOptimizer) SetConstraints(list *ConstraintList, variableCount int) bool {
 	self.constraints = list
-	constraintCount := len(self.constraints)
+	constraintCount := self.constraints.Len()
 
 	if self.variableCount != variableCount {
 		self.makeEmpty()
@@ -37,8 +37,8 @@ func (self *LayoutOptimizer) SetConstraints(list ConstraintList, variableCount i
 	rightSide := make([]float64, constraintCount)
 
 	// set up soft constraint matrix
-	for c := 0; c < len(self.constraints); c++ {
-		constraint := self.constraints[c]
+	for c := 0; c < self.constraints.Len(); c++ {
+		constraint := self.constraints.GetAt(c)
 		if !constraint.IsSoft() {
 			rightSide[c] = 0.0
 			continue
@@ -58,8 +58,8 @@ func (self *LayoutOptimizer) SetConstraints(list ConstraintList, variableCount i
 
 		rightSide[c] = self.rightSide(constraint) * weight
 		summands := constraint.LeftSide()
-		for s := 0; s < len(summands); s++ {
-			summand := summands[s]
+		for s := 0; s < summands.Len(); s++ {
+			summand := summands.GetAt(s)
 			variable := summand.Var().Index()
 			if constraint.Op() == OperatorLE {
 				self.softConstraints[c][variable] = -summand.Coeff()
@@ -94,8 +94,8 @@ func (self *LayoutOptimizer) InitCheck() error {
 func (self *LayoutOptimizer) actualValue(constraint *Constraint, values []float64) float64 {
 	summands := constraint.LeftSide()
 	value := 0.0
-	for s := 0; s < len(summands); s++ {
-		summand := summands[s]
+	for s := 0; s < summands.Len(); s++ {
+		summand := summands.GetAt(s)
 		variable := summand.Var().Index()
 		value += values[variable] * summand.Coeff()
 	}
@@ -142,7 +142,7 @@ func (self *LayoutOptimizer) solve(values []float64) bool {
 		return false
 	}
 
-	constraintCount := len(self.constraints)
+	constraintCount := self.constraints.Len()
 
 	// our QP is supposed to be in this form:
 	//   min_x 1/2x^TGx + x^Td
@@ -164,10 +164,10 @@ func (self *LayoutOptimizer) solve(values []float64) bool {
 	}
 
 	// init active set
-	activeConstraints := make(ConstraintList, 0)
+	activeConstraints := newConstraintList()
 
 	for i := 0; i < constraintCount; i++ {
-		constraint := self.constraints[i]
+		constraint := self.constraints.GetAt(i)
 		if constraint.IsSoft() {
 			continue
 		}
@@ -192,7 +192,7 @@ func (self *LayoutOptimizer) solve(values []float64) bool {
 		//        g_k = Gx_k + d
 		//        p = x - x_k
 
-		activeCount := len(activeConstraints)
+		activeCount := activeConstraints.Len()
 		if activeCount == 0 {
 			return false
 		}
@@ -204,14 +204,14 @@ func (self *LayoutOptimizer) solve(values []float64) bool {
 		zeroMatrix(self.activeMatrix, am, an)
 
 		for i := 0; i < activeCount; i++ {
-			constraint := activeConstraints[i]
+			constraint := activeConstraints.GetAt(i)
 			if constraint.IsSoft() {
 				continue
 			}
 
 			summands := constraint.LeftSide()
-			for s := 0; s < len(summands); s++ {
-				summand := summands[i]
+			for s := 0; s < summands.Len(); s++ {
+				summand := summands.GetAt(i)
 				variable := summand.Var().Index()
 				if constraint.Op() == OperatorLE {
 					self.activeMatrix[i][variable] = -summand.Coeff()
@@ -280,7 +280,7 @@ func (self *LayoutOptimizer) solve(values []float64) bool {
 			index = 0
 			for i := 0; i < activeCount; i++ {
 				if independentRows[i] {
-					constraint := activeConstraints[i]
+					constraint := activeConstraints.GetAt(i)
 					if constraint.Op() != OperatorEQ {
 						if lambda[index] < minLambda {
 							minLambda = lambda[index]
@@ -306,7 +306,7 @@ func (self *LayoutOptimizer) solve(values []float64) bool {
 			barrier := -1
 			// if alpha_k < 1, add a barrier constraint to W^k
 			for i := 0; i < constraintCount; i++ {
-				constraint := self.constraints[i]
+				constraint := self.constraints.GetAt(i)
 				if activeConstraints.IndexOf(constraint) != -1 {
 					continue
 				}
@@ -326,7 +326,7 @@ func (self *LayoutOptimizer) solve(values []float64) bool {
 			}
 
 			if alpha < 1 {
-				activeConstraints.AddItem(self.constraints[barrier])
+				activeConstraints.AddItem(self.constraints.GetAt(barrier))
 			}
 
 			// x += p * alpha
@@ -407,7 +407,7 @@ func (self *LayoutOptimizer) Solve(values []float64) (success bool) {
 		return false
 	}
 
-	constraintCount := len(self.constraints)
+	constraintCount := self.constraints.Len()
 
 	// allocate the active constraint matrix and its transposed matrix
 	self.activeMatrix = initMatrixSlice(constraintCount, self.variableCount)

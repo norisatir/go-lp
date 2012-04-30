@@ -9,45 +9,14 @@ type softInEqData struct {
 	minSlackConstraint *Constraint
 }
 
-type softInEqList []*softInEqData
-
-func (self *softInEqList) AddItem(s *softInEqData) {
-	*self = append(*self, s)
-}
-
-func (self *softInEqList) RemoveItem(s *softInEqData) bool {
-	for i, s1 := range *self {
-		if s == s1 {
-			*self = append((*self)[:i], (*self)[i+1:]...)
-		}
-	}
-	return false
-}
-
-func (self *softInEqList) RemoveItemAt(i int) bool {
-	if i >= len(*self) {
-		return false
-	}
-	*self = append((*self)[:i], (*self)[i+1:]...)
-	return true
-}
-
-func (self softInEqList) IndexOf(s *softInEqData) int {
-	for i, s1 := range self {
-		if s1 == s {
-			return i
-		}
-	}
-	return -1
-}
-
 type QPSolver struct {
-	inEqSlackConstraints softInEqList
+	inEqSlackConstraints *softInEqList
 	ls                   *LinearSpec
 }
 
 func newQPSolver(ls *LinearSpec) *QPSolver {
 	qs := &QPSolver{}
+	qs.inEqSlackConstraints = newsoftInEqList()
 	qs.ls = ls
 
 	return qs
@@ -84,8 +53,8 @@ func (self *QPSolver) ConstraintRemoved(constraint *Constraint) bool {
 		return true
 	}
 
-	for i := 0; i < len(self.inEqSlackConstraints); i++ {
-		data := self.inEqSlackConstraints[i]
+	for i := 0; i < self.inEqSlackConstraints.Len(); i++ {
+		data := self.inEqSlackConstraints.GetAt(i)
 		if data.constraint != constraint {
 			continue
 		}
@@ -120,10 +89,10 @@ func (self *QPSolver) isSoftInequality(constraint *Constraint) bool {
 
 type ActiveSetSolver struct {
 	*QPSolver
-	variables             VariableList
-	constraints           ConstraintList
-	variableGEConstraints ConstraintList
-	variableLEConstraints ConstraintList
+	variables             *VariableList
+	constraints           *ConstraintList
+	variableGEConstraints *ConstraintList
+	variableLEConstraints *ConstraintList
 }
 
 func NewActiveSetSolver(ls *LinearSpec) *ActiveSetSolver {
@@ -133,12 +102,15 @@ func NewActiveSetSolver(ls *LinearSpec) *ActiveSetSolver {
 	ass.variables = ls.UsedVariables()
 	ass.constraints = ls.Constraints()
 
+	ass.variableGEConstraints = newConstraintList()
+	ass.variableLEConstraints = newConstraintList()
+
 	return ass
 }
 
 func (self *ActiveSetSolver) Solve() int {
-	nConstraints := len(self.constraints)
-	nVariables := len(self.variables)
+	nConstraints := self.constraints.Len()
+	nVariables := self.variables.Len()
 
 	if nVariables > nConstraints {
 		return ResultInfeasible
@@ -152,14 +124,14 @@ func (self *ActiveSetSolver) Solve() int {
 	// set constraint matrix and add slack variables if necessary
 	rowIndex := 0
 	for c := 0; c < nConstraints; c++ {
-		constraint := self.constraints[c]
+		constraint := self.constraints.GetAt(c)
 		if constraint.IsSoft() {
 			continue
 		}
 		leftSide := constraint.LeftSide()
 		*(system.B(rowIndex)) = constraint.RightSide()
-		for sIndex := 0; sIndex < len(leftSide); sIndex++ {
-			summand := leftSide[sIndex]
+		for sIndex := 0; sIndex < leftSide.Len(); sIndex++ {
+			summand := leftSide.GetAt(sIndex)
 			coefficient := summand.Coeff()
 			*(system.A(rowIndex, summand.VariableIndex())) = coefficient
 		}
@@ -172,6 +144,8 @@ func (self *ActiveSetSolver) Solve() int {
 		}
 		rowIndex++
 	}
+
+	system.Print()
 
 	system.SetRows(rowIndex)
 	system.RemoveLinearlyDependentRows()
@@ -188,7 +162,7 @@ func (self *ActiveSetSolver) Solve() int {
 
 	// back to the variables
 	for i := 0; i < nVariables; i++ {
-		self.variables[i].SetValue(results[i])
+		self.variables.GetAt(i).SetValue(results[i])
 	}
 
 	return ResultOptimal
@@ -265,10 +239,10 @@ func (self *ActiveSetSolver) SaveModel(fileName string) bool {
 	return false
 }
 
-func (self *ActiveSetSolver) removeSoftConstraint(list ConstraintList) {
+func (self *ActiveSetSolver) removeSoftConstraint(list *ConstraintList) {
 	allConstraints := self.ls.Constraints()
-	for i := 0; i < len(allConstraints); i++ {
-		constraint := allConstraints[i]
+	for i := 0; i < allConstraints.Len(); i++ {
+		constraint := allConstraints.GetAt(i)
 		if !constraint.IsSoft() {
 			continue
 		}
@@ -278,9 +252,9 @@ func (self *ActiveSetSolver) removeSoftConstraint(list ConstraintList) {
 	}
 }
 
-func (self *ActiveSetSolver) addSoftConstraint(list ConstraintList) {
-	for i := 0; i < len(list); i++ {
-		constraint := list[i]
+func (self *ActiveSetSolver) addSoftConstraint(list *ConstraintList) {
+	for i := 0; i < list.Len(); i++ {
+		constraint := list.GetAt(i)
 		if self.ls.AddConstraint(constraint) == false {
 			constraint = nil
 		}
@@ -288,7 +262,7 @@ func (self *ActiveSetSolver) addSoftConstraint(list ConstraintList) {
 }
 
 func (self *ActiveSetSolver) MinSize(width, height *Variable) Size {
-	softConstraints := make(ConstraintList, 0)
+	softConstraints := newConstraintList()
 	self.removeSoftConstraint(softConstraints)
 
 	heightConstraint := self.ls.AddConstraint4([]float64{1.0}, []*Variable{height},
@@ -312,7 +286,7 @@ func (self *ActiveSetSolver) MinSize(width, height *Variable) Size {
 }
 
 func (self *ActiveSetSolver) MaxSize(width, height *Variable) Size {
-	softConstraints := make(ConstraintList, 0)
+	softConstraints := newConstraintList()
 	self.removeSoftConstraint(softConstraints)
 
 	hugeValue := 32000.00

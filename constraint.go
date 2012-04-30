@@ -1,39 +1,10 @@
 package lp
 
-type SummandList []*Summand
-
-func (self SummandList) AddItem(s *Summand) {
-	self = append(self, s)
-}
-
-func (self SummandList) RemoveItem(s *Summand) bool {
-	for i, s1 := range self {
-		if s == s1 {
-			self = append(self[:i], self[i+1:]...)
-			return true
-		}
-	}
-	return false
-}
-
-func (self SummandList) IndexOf(s *Summand) int {
-	for i, s1 := range self {
-		if s1 == s {
-			return i
-		}
-	}
-	return -1
-}
-
-func (self *SummandList) Clear() {
-	*self = (*self)[:0]
-}
-
 // Hard linear constraint, i.e. one that must be satisfied.
 // May render a specification infeasible.
 type Constraint struct {
 	ls                     *LinearSpec
-	leftSide               SummandList
+	leftSide               *SummandList
 	opType                 int
 	rightSide              float64
 	penaltyNeg, penaltyPos float64
@@ -43,7 +14,7 @@ type Constraint struct {
 	isValid                bool
 }
 
-func newConstraint(ls *LinearSpec, summands SummandList, opType int,
+func newConstraint(ls *LinearSpec, summands *SummandList, opType int,
 	rightSide float64, penaltyNeg, penaltyPos float64) *Constraint {
 
 	c := &Constraint{}
@@ -66,20 +37,21 @@ func (self *Constraint) Index() int {
 }
 
 // LeftSide gets the left side of the constraint.
-func (self *Constraint) LeftSide() SummandList {
+func (self *Constraint) LeftSide() *SummandList {
 	return self.leftSide
 }
 
 // SetLeftSide sets the summands on the left side of the constraint
-func (self *Constraint) SetLeftSide(summands SummandList) {
+func (self *Constraint) SetLeftSide(summands *SummandList) {
 	if !self.isValid {
 		return
 	}
 
 	// check left side
-	for i, s := range summands {
-		for a := i + 1; a < len(summands); a++ {
-			nextSummand := summands[a]
+	for i := 0; i < summands.Len(); i++ {
+		s := summands.GetAt(i)
+		for a := i + 1; a < summands.Len(); a++ {
+			nextSummand := summands.GetAt(a)
 			if s.Var() == nextSummand.Var() {
 				s.SetCoeff(s.Coeff() + nextSummand.Coeff())
 				summands.RemoveItem(nextSummand)
@@ -99,7 +71,7 @@ func (self *Constraint) SetLeftSide1(coeffs []float64, vars []*Variable) {
 		return
 	}
 
-	self.leftSide = self.leftSide[:0]
+	self.LeftSide().Clear()
 	for i, c := range coeffs {
 		self.leftSide.AddItem(NewSummand(c, vars[i]))
 	}
