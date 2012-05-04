@@ -55,6 +55,8 @@ func TestSoftConstraints(t *testing.T) {
 	ls.AddConstraint4([]float64{1.0, -1.0}, []*Variable{x2, x1}, OperatorEQ, 10, 5, 5)
 	c6 := ls.AddConstraint4([]float64{1.0, -1.0}, []*Variable{x3, x2}, OperatorEQ, 5, 5, 5)
 
+    printResults(ls.UsedVariables())
+
 	ls.Solve()
 	fmt.Println("ls: ", ls.String())
 	printResults(ls.AllVariables())

@@ -9,6 +9,7 @@ type Variable struct {
 	min, max, value float64
 	label           string
 	isValid         bool
+    reference       int
 }
 
 func newVariable(ls *LinearSpec) *Variable {
@@ -18,6 +19,7 @@ func newVariable(ls *LinearSpec) *Variable {
 	v.value = math.NaN()
 	v.min = -20000
 	v.max = 20000
+    v.reference = 0
 	v.isValid = false
 
 	return v
@@ -30,6 +32,16 @@ func (self *Variable) Index() int {
 
 func (self *Variable) GlobalIndex() int {
 	return self.ls.GlobalIndexOf(self)
+}
+
+func (self *Variable) AddReference() int {
+    self.reference++
+    return self.reference
+}
+
+func (self *Variable) RemoveReference() int {
+    self.reference--
+    return self.reference
 }
 
 // LS gets the current linear specification

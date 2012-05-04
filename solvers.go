@@ -145,8 +145,6 @@ func (self *ActiveSetSolver) Solve() int {
 		rowIndex++
 	}
 
-	system.Print()
-
 	system.SetRows(rowIndex)
 	system.RemoveLinearlyDependentRows()
 	system.RemoveUnusedVariables()
@@ -159,6 +157,7 @@ func (self *ActiveSetSolver) Solve() int {
 	system.Results(results, nVariables+nConstraints)
 	optimizer := NewLayoutOptimizer(self.constraints, nVariables)
 	optimizer.Solve(results)
+    fmt.Println(results)
 
 	// back to the variables
 	for i := 0; i < nVariables; i++ {

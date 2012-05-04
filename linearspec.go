@@ -114,8 +114,10 @@ func (self *LinearSpec) AddConstraint(c *Constraint) bool {
 	leftSide := c.LeftSide()
 
 	for i := 0; i < leftSide.Len(); i++ {
-		s := leftSide.GetAt(i)
-		self.usedVariables.AddItem(s.Var())
+		v := leftSide.GetAt(i).Var()
+        if v.AddReference() == 1 {
+            self.usedVariables.AddItem(v)
+        }
 	}
 
 	if !self.solver.ConstraintAdded(c) {
@@ -128,15 +130,15 @@ func (self *LinearSpec) AddConstraint(c *Constraint) bool {
 
 func (self *LinearSpec) RemoveConstraint(c *Constraint) bool {
 	self.solver.ConstraintRemoved(c)
-
-	if !self.constraints.RemoveItem(c) {
-		return false
-	}
+    self.constraints.RemoveItem(c)
 	c.isValid = false
 
 	leftSide := c.LeftSide()
 	for i := 0; i < leftSide.Len(); i++ {
-		self.usedVariables.RemoveItem(leftSide.GetAt(i).Var())
+        v := leftSide.GetAt(i).Var()
+        if v.RemoveReference() == 0 {
+            self.usedVariables.RemoveItem(v)
+        }
 	}
 
 	return true
@@ -165,7 +167,8 @@ func (self *LinearSpec) AddConstraint4(coeffs []float64, vars []*Variable,
 	summands := newSummandList()
 
 	for i, c := range coeffs {
-		summands.AddItem(NewSummand(c, vars[i]))
+        s := NewSummand(c, vars[i])
+		summands.AddItem(s)
 	}
 
 	return self.addConstraint(summands, opType, rightSide, penaltyNeg, penaltyPos)

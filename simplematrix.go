@@ -171,6 +171,7 @@ func solve(a [][]float64, n int, b []float64) bool {
 		for j := i + 1; j < n; j++ {
 			index := indices[j]
 			q := -a[index][i] / a[pivot][i]
+            a[index][i] = 0
 			for k := i + 1; k < n; k++ {
 				a[index][k] += a[pivot][k] * q
 			}
@@ -222,7 +223,7 @@ func computeDependencies(a [][]float64, m, n int, independent []bool) int {
 				}
 			}
 
-			if fuzzyEquals(pivotValue, 0) {
+			if !fuzzyEquals(pivotValue, 0) {
 				break
 			}
 			column++

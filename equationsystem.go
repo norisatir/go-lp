@@ -162,7 +162,7 @@ func (self *EquationSystem) RemoveLinearlyDependentRows() {
 	for i := 0; i < self.rows; i++ {
 		if !independentRows[i] {
 			lastDepRow := -1
-			for d := self.rows - 1; d < i; d-- {
+			for d := self.rows - 1; d > i; d-- {
 				if independentRows[d] {
 					lastDepRow = d
 					break
@@ -216,7 +216,7 @@ func (self *EquationSystem) Print() {
 
 func (self *EquationSystem) eliminateColumn(column, startRow, endRow int) {
 	value := self.matrix[self.rowIndices[column]][self.columnIndices[column]]
-	if value != 1.0 {
+	if value != 1. {
 		for j := column; j < self.columns; j++ {
 			self.matrix[self.rowIndices[column]][self.columnIndices[j]] /= value
 		}

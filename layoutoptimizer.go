@@ -211,7 +211,7 @@ func (self *LayoutOptimizer) solve(values []float64) bool {
 
 			summands := constraint.LeftSide()
 			for s := 0; s < summands.Len(); s++ {
-				summand := summands.GetAt(i)
+				summand := summands.GetAt(s)
 				variable := summand.Var().Index()
 				if constraint.Op() == OperatorLE {
 					self.activeMatrix[i][variable] = -summand.Coeff()
@@ -255,7 +255,7 @@ func (self *LayoutOptimizer) solve(values []float64) bool {
 			aam := removeLinearyDependentRows(aa, self.temp2, independentColumns, an, am)
 			aan := am
 
-			if aam == aan {
+			if aam != aan {
 				return false
 			}
 
@@ -302,7 +302,7 @@ func (self *LayoutOptimizer) solve(values []float64) bool {
 			activeConstraints.RemoveItemAt(minIndex)
 		} else {
 			// compute alpha_k
-			alpha := 0.0
+			alpha := 1.0
 			barrier := -1
 			// if alpha_k < 1, add a barrier constraint to W^k
 			for i := 0; i < constraintCount; i++ {
@@ -333,7 +333,7 @@ func (self *LayoutOptimizer) solve(values []float64) bool {
 			addVectorsScaled(x, p, alpha, self.variableCount)
 		}
 	}
-	return false
+	return true
 }
 
 func (self *LayoutOptimizer) solveSubProblem(d []float64, am int, p []float64) bool {
